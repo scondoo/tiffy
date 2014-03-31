@@ -5,8 +5,7 @@ from google.appengine.api import urlfetch
 from tiffy.exceptions import InvalidArgumentsError, TypeformError
 
 
-_TYPEFORM_API_KEY = 'API KEY HERE'
-_TYPE_FORM_API_URI = 'https://api.typeform.com/v0/form/{}?key=' + _TYPEFORM_API_KEY + '&completed={}'
+_TYPE_FORM_API_URI = 'https://api.typeform.com/v0/form/{token}?key={api_key}&completed={completed}'
 
 
 class TypeformResponse(object):
@@ -45,34 +44,48 @@ class TypeformResponse(object):
         return self.get_json().get('responses', [])
 
 
-def _get_typeform_url(token, completed=True, since=None, until=None):
-    url = _TYPE_FORM_API_URI.format(token, str(completed).lower())
-    if since is not None:
-        url += '&since={}'.format(since)
+class Tiffy(object):
+    def __init__(self, api_key):
+        if api_key is None:
+            raise InvalidArgumentsError(
+                'api_key cannot be None'
+            )
 
-    if until is not None:
-        url += '&until={}'.format(until)
+        self.api_key = api_key
 
-    return url
+    def _get_typeform_url(self, token, completed=True, since=None, until=None):
+        if not isinstance(completed, bool):
+            raise InvalidArgumentsError(
+                'completed parameter must be a boolean'
+            )
 
+        url = _TYPE_FORM_API_URI.format(token=token,
+                                        api_key=self.api_key,
+                                        completed=str(completed).lower())
 
-def _fire_typeform_urlfetch_call(token, deadline, since, until):
-    response = TypeformResponse(urlfetch.create_rpc(deadline=deadline), token)
-    urlfetch.make_fetch_call(response.rpc, _get_typeform_url(token, since, until))
-    return response
+        if since is not None:
+            url += '&since={}'.format(since)
 
+        if until is not None:
+            url += '&until={}'.format(until)
 
-def get_typeform_multi(tokens, deadline=None, completed=True, since=None, until=None):
-    if not isinstance(tokens, list):
-        tokens = [tokens]
+        return url
 
-    typeform_responses = []
-    for token in tokens:
-        typeform_response = _fire_typeform_urlfetch_call(token, deadline, since, until)
-        typeform_responses.append(typeform_response)
+    def _fire_typeform_urlfetch_call(self, token, deadline, since, until):
+        response = TypeformResponse(urlfetch.create_rpc(deadline=deadline), token)
+        urlfetch.make_fetch_call(response.rpc, self._get_typeform_url(token, since, until))
+        return response
 
-    return typeform_responses
+    def get_typeform_multi(self, tokens, deadline=None, completed=True, since=None, until=None):
+        if not isinstance(tokens, list):
+            tokens = [tokens]
 
+        typeform_responses = []
+        for token in tokens:
+            typeform_response = self._fire_typeform_urlfetch_call(token, deadline, since, until)
+            typeform_responses.append(typeform_response)
 
-def get_typeform(token, deadline=None, completed=True, since=None, until=None):
-    return _fire_typeform_urlfetch_call(token, deadline, since, until)
+        return typeform_responses
+
+    def get_typeform(self, token, deadline=None, completed=True, since=None, until=None):
+        return self._fire_typeform_urlfetch_call(token, deadline, since, until)
