@@ -3,4 +3,12 @@ tiffy
 
 A Google App Engine Python library for the Typeform API
 
-### CURENTLY IN DEVELOPMENT
+####Supports:
+  * The V0 version of the TypeForm API.
+  * Since and Until parameters.
+  * All calls are currently performed async using App Engine's URLFetch API.
+  * Single and multiple async API calls.
+
+####To do:
+  * Wrappers to allow for use within a standard (non App Engine) Python environment.
+    * Async requests gevent and the requests library.
